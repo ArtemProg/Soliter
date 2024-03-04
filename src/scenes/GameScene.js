@@ -7,6 +7,9 @@ import SpotDump from "../game/SpotDump.js";
 import SpotStack from "../game/SpotStack.js";
 import SpotsResults from "../game/SpotsResults.js";
 import SpotTemp from "../game/SpotTemp.js";
+import GameState from "../game/GameState.js";
+import Caretaker from "../game/Caretaker.js";
+import TextButton from "../game/TextButton.js";
 //import { Math } from "phaser";
 
 export default class GameScene extends Phaser.Scene {
@@ -26,6 +29,12 @@ export default class GameScene extends Phaser.Scene {
     /** @type {Card[]} */
     cards = [];
 
+    /** @type {Caretaker} */
+    #caretaker;
+
+    /** @type {TextButton} */
+    undoButton;
+
     constructor() {
         super('Game');
     }
@@ -39,8 +48,11 @@ export default class GameScene extends Phaser.Scene {
         this.createSpots();
         this.createCards();
         this.initEventDrag();
+        this.createUndoButton();
 
         this.input.on("gameobjectdown", this.onCardClicked, this);
+
+        this.#caretaker = new Caretaker(this);
     }
 
     createBackground() {
@@ -275,6 +287,7 @@ export default class GameScene extends Phaser.Scene {
             if (selectedSpot) {
 
                 if (gameObject.currentSpot != selectedSpot) {
+                    this.#caretaker.backup(`drag (${gameObject.fullName})`);
                     gameObject.currentSpot.removeCard(gameObject);
                 }
 
@@ -311,6 +324,15 @@ export default class GameScene extends Phaser.Scene {
             //this.children.moveTo(gameObject, index); // перемещение на прежний уровень
 
         });
+    }
+
+    createUndoButton() {
+        this.undoButton = new TextButton(this, 100, 900, 'UNDO', { fill: '#0f0'}, () => this.undoButtonClick());
+        this.add.existing(this.undoButton);
+    }
+
+    undoButtonClick() {
+        this.#caretaker.undo();
     }
 
     /** 
@@ -368,6 +390,8 @@ export default class GameScene extends Phaser.Scene {
             }
 
             flip(() => {
+                this.#caretaker.backup(`spotDump (${card.fullName} & all) > spotStack`);
+
                 this.spotDump.removeCard(card);
                 card.setSpot(this.spotStack);
                 card.isOpen = false;
@@ -442,6 +466,8 @@ export default class GameScene extends Phaser.Scene {
         }
         
         flip(() => {
+            this.#caretaker.backup(`spotStack (${card.fullName}) > spotDump`);
+
             this.spotStack.removeCard(card);
             card.setSpot(this.spotDump);
 
@@ -459,12 +485,54 @@ export default class GameScene extends Phaser.Scene {
         if (card.isOpen) {
             //
         } else if (spot.currentCard() === card) {
+            this.#caretaker.backup(`open card (${card.fullName})`);
             card.open(() => {});
         }
     }
 
     cardClickSpotAnother(spot, card) {
         console.log('Another', spot, card);
+    }
+
+    /** @returns {GameState}  */
+    save() {
+        return new GameState(this.cards, [this.spotDump, this.spotStack, ...this.spotsResults, ...this.spotsTemp]);
+    }
+
+    /** 
+     * @param {GameState} gameState
+    */
+    restore(gameState) {
+        const mapCards = gameState.getCards();
+        const mapSpots = gameState.getSpots();
+        
+        mapSpots.forEach((cards, spot) => {
+            spot.cards = [];
+        });
+
+        mapCards.forEach((isOpen, card) => {
+            card.currentSpot = null;
+            card.setVisible(false);
+            card.isOpen = isOpen;
+            if (isOpen) {
+                card.setTexture('cards', card.fullName);
+                this.input.setDraggable(card, true);
+                
+            } else {
+                card.setTexture('cards', 'back');
+                this.input.setDraggable(card, false);
+            }
+        });
+
+        mapSpots.forEach((cards, spot) => {
+            
+            cards.forEach((card) => {
+                card.setSpot(spot);
+                card.setVisible(true);
+            });
+
+        });
+
     }
 
 }
