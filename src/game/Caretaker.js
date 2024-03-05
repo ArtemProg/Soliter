@@ -23,6 +23,9 @@ export default class Caretaker {
         if (!this.#gameStates.length) {
             return;
         }
+
+        const arr = [...this.#gameStates];
+
         const gameState = this.#gameStates.pop();
         this.#mainScene.restore(gameState);
     }

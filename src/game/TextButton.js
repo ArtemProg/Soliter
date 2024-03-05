@@ -30,4 +30,8 @@ export default class TextButton extends Phaser.GameObjects.Text {
         this.setStyle({ fill: '#0ff' });
     }
 
+    sceneClicked(scene) {
+        
+    }
+
 }

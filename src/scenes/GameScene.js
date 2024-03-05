@@ -63,16 +63,20 @@ export default class GameScene extends Phaser.Scene {
         
         const distance = 20;
 
-        this.spotDump = new SpotDump(this, 5 * this.cardSize.width + (distance * 2) * 5 + distance, distance, this.cardClickSpotAnother);
+        /* this.spotDump = new SpotDump(this, 5 * this.cardSize.width + (distance * 2) * 5 + distance, distance, this.cardClickSpotAnother);
         this.spotStack = new SpotStack(this, 6 * this.cardSize.width + (distance * 2) * 6 + distance, distance, this.cardClickSpotStack);
-
-        //this.spotStack = new SpotStack(this, this.scale.width - this.cardSize.width, distance);
-        //this.spotStack = new SpotStack(this, 7 * this.cardSize.width + (distance * 2) * 7 / 2 + distance, distance);
         
         for (let i = 0, x = distance; i < 4; i++, x += (distance * 2)) {
             this.spotsResults.push(new SpotsResults(this, i * this.cardSize.width + x, distance, this.cardClickSpotAnother));
-        }
+        } */
         
+        this.spotStack = new SpotStack(this, distance, distance, this.cardClickSpotStack);
+        this.spotDump = new SpotDump(this, distance * 3 + this.cardSize.width, distance, this.cardClickSpotAnother);
+        
+        for (let i = 3, x = distance; i < 7; i++, x += (distance * 2)) {
+            this.spotsResults.push(new SpotsResults(this, distance + i * this.cardSize.width + (distance * 2) * i, distance, this.cardClickSpotAnother));
+        }
+
         for (let i = 0, x = distance; i < 7; i++, x += (distance * 2)) {
             this.spotsTemp.push(new SpotTemp(this, i * this.cardSize.width + x, this.cardSize.height + distance * 4, this.cardClickSpotTemp));
         }
@@ -350,6 +354,9 @@ export default class GameScene extends Phaser.Scene {
             this.spotDump.cards.forEach(card => card.setVisible(false));
             
             let card =  this.spotDump.cards.pop();
+
+            if (!card) return;
+
             card.setVisible(true);
             this.children.bringToTop(card);
 
@@ -426,7 +433,7 @@ export default class GameScene extends Phaser.Scene {
      * @param {Spot} spot
      * @param {Card} card
     */
-    cardClickSpotStack(spot, card) {
+    cardClickSpotStack1(spot, card) {
         
         this.children.bringToTop(card);
 
@@ -481,6 +488,41 @@ export default class GameScene extends Phaser.Scene {
      * @param {Spot} spot
      * @param {Card} card
     */
+    cardClickSpotStack(spot, card) {
+        
+        this.#caretaker.backup(`spotStack (${card.fullName}) > spotDump`);
+
+
+        this.children.bringToTop(card);
+
+        const startPosXY = this.spotStack.getPosition();
+        const endPosXY = this.spotDump.getPosition();
+
+        card.setTexture('cards', card.fullName);
+        
+
+        this.spotStack.removeCard(card);
+        card.setSpot(this.spotDump);
+
+        card.isOpen = true;
+    
+        this.input.setDraggable(card);
+
+        if (this.spotDump.cards.length > 1) {
+
+            for(let i = 0, index = this.spotDump.cards.length - 2; i < 2 && index >= 0; i++, index--) {
+                const _card = this.spotDump.cards[index];
+                const{x, y} = this.spotDump.getPositionCard(_card);
+                _card.setPosition(x, y);
+            }
+
+        }
+    }
+
+    /** 
+     * @param {Spot} spot
+     * @param {Card} card
+    */
     cardClickSpotTemp(spot, card) {
         if (card.isOpen) {
             //
@@ -528,10 +570,21 @@ export default class GameScene extends Phaser.Scene {
             
             cards.forEach((card) => {
                 card.setSpot(spot);
+                this.children.bringToTop(card);
                 card.setVisible(true);
             });
 
         });
+
+        if (this.spotDump.cards.length > 1) {
+
+            for(let i = 0, index = this.spotDump.cards.length - 1; i < 3 && index >= 0; i++, index--) {
+                const _card = this.spotDump.cards[index];
+                const{x, y} = this.spotDump.getPositionCard(_card);
+                _card.setPosition(x, y);
+            }
+
+        }
 
     }
 
